@@ -2,29 +2,25 @@
 in vec2 inPosition;
 out vec3 viewDirection, lightDirection, normal;
 out float dist;
-out vec4 position;
+out vec4 position, shadowCoord;
 uniform int object, lightMode;
-uniform mat4 modelMat, viewMat, projMat;
-uniform vec3 baseCol, lightPos, eyePos;
+uniform mat4 modelMat, viewMat, projMat, lightMVP;
+uniform vec3 baseCol, lightDir, eyePos;
 const float PI = 3.1415926535897932384626433832795;
+
 vec3 createObject(vec2 uv);
 vec3 normalDiff (vec2 uv);
-
-uniform mat4 lightMVP;
-out vec4 shadowCoord;
 
 void main() {
     // Calculated in World space
     position = vec4(createObject(inPosition), 1.0);
     normal = normalDiff(inPosition);
-	gl_Position = projMat * viewMat * modelMat * position;
     normal = transpose(inverse(mat3(modelMat))) * normal;
+	gl_Position = projMat * viewMat * modelMat * position;
 
-    vec4 vObjectPosition =  modelMat * position;
-    //vec3 vLight = mat3(viewMat) * lightPos;
-    vec3 vLight = lightPos;
-    lightDirection = vec3(10,0,8);
-    viewDirection = -vObjectPosition.xyz;
+    vec4 objectPosition =  modelMat * position;
+    lightDirection = lightDir;
+    viewDirection = -objectPosition.xyz;
     dist = length(lightDirection);
 
     mat4 biasMatrix= mat4(

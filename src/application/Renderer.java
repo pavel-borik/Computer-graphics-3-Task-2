@@ -1,6 +1,5 @@
 package application;
 
-import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2GL3;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLEventListener;
@@ -48,8 +47,8 @@ public class Renderer implements GLEventListener, MouseListener,
 		shaderProgram = ShaderUtils.loadProgram(gl, "/application/phong");
 		shaderProgram2 = ShaderUtils.loadProgram(gl, "/application/phong");
 
-		torus = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
 		floor = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
+		torus = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
 		mushroom = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
 		sphere = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
 
@@ -59,7 +58,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		locProjMat = gl.glGetUniformLocation(shaderProgram, "projMat");
 		locEye = gl.glGetUniformLocation(shaderProgram, "eyePos");
 		locBaseCol = gl.glGetUniformLocation(shaderProgram, "baseCol");
-		locLightDir = gl.glGetUniformLocation(shaderProgram, "lightPos");
+		locLightDir = gl.glGetUniformLocation(shaderProgram, "lightDir");
 		locLightMatrix = gl.glGetUniformLocation(shaderProgram, "lightMVP");
 		locAAmode = gl.glGetUniformLocation(shaderProgram, "aaMode");
 
@@ -72,7 +71,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		locBaseCol2 = gl.glGetUniformLocation(shaderProgram2, "baseCol");
 		locLightPos2 = gl.glGetUniformLocation(shaderProgram2, "lightPos");
 */
-		renderTarget = new OGLRenderTarget(gl, 512, 512);
+		renderTarget = new OGLRenderTarget(gl, 1024, 1024);
 
 		cam = cam.withPosition(new Vec3D(25, 25, 5))
 				.withAzimuth(Math.PI * 1.25)
