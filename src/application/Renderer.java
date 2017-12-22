@@ -18,9 +18,9 @@ public class Renderer implements GLEventListener, MouseListener,
 
 	int width, height, ox, oy;
 	int shaderProgram, shaderProgram2;
-	int locObj,locModelMat,locViewMat,locProjMat,locEye,locBaseCol, locLightDir, locLightMatrix;
+	int locObj,locModelMat,locViewMat,locProjMat,locEye,locBaseCol, locLightDir, locLightMatrix, locAAmode;
 	int locProjMat2, locModelMat2, locViewMat2, locEye2, locObj2, locBaseCol2, locLightPos2;
-	int objSwitch = 0;
+	int objSwitch = 0, aaSwitch = 0;
 	int polygonMode = GL2GL3.GL_FILL;
 	OGLTexture2D textureDepth,textureColor;
 	OGLTexture2D.Viewer textureViewer;
@@ -28,7 +28,6 @@ public class Renderer implements GLEventListener, MouseListener,
 
 	Mat4 lightViewMat, lightProjMat;
 	boolean saved = false;
-
 
 	Vec3D baseColor= new Vec3D(1,0,0);
 	Vec3D lightDirection = new Vec3D(10.0, 0.0, 8.0);
@@ -62,6 +61,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		locBaseCol = gl.glGetUniformLocation(shaderProgram, "baseCol");
 		locLightDir = gl.glGetUniformLocation(shaderProgram, "lightPos");
 		locLightMatrix = gl.glGetUniformLocation(shaderProgram, "lightMVP");
+		locAAmode = gl.glGetUniformLocation(shaderProgram, "aaMode");
 
 /*
 		locObj2 = gl.glGetUniformLocation(shaderProgram2, "object");
@@ -96,13 +96,14 @@ public class Renderer implements GLEventListener, MouseListener,
 	public void display(GLAutoDrawable glDrawable) {
 		GL2GL3 gl = glDrawable.getGL().getGL2GL3();
 
-		baseColor = new Vec3D(0.5, 0.5, 0.5);
-		objSwitch = 0;
 		gl.glUseProgram(shaderProgram);
+		objSwitch = 0;
 		renderTarget.bind();
 		gl.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		gl.glClear(GL2GL3.GL_COLOR_BUFFER_BIT | GL2GL3.GL_DEPTH_BUFFER_BIT);
+		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
 
+		// view and projection matrices of the light are used in the first run to calculate the shadows' position
 		gl.glUniformMatrix4fv(locModelMat, 1, false,
 				ToFloatArray.convert(model), 0);
 		gl.glUniformMatrix4fv(locViewMat, 1, false,
@@ -111,38 +112,34 @@ public class Renderer implements GLEventListener, MouseListener,
 				ToFloatArray.convert( lightProjMat), 0);
 		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(model.mul(lightViewMat).mul(lightProjMat)),0);
 
-		gl.glUniform1i(locObj, objSwitch);
-		gl.glUniform3fv(locEye, 1, ToFloatArray.convert(cam.getEye()), 0);
-		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
-		gl.glUniform3fv(locLightDir, 1, ToFloatArray.convert(lightDirection), 0);
+//		gl.glUniform1i(locAAmode, aaSwitch);
+//		gl.glUniform1i(locObj, objSwitch);
+//		gl.glUniform3fv(locEye, 1, ToFloatArray.convert(cam.getEye()), 0);
+//		//gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
+//		gl.glUniform3fv(locLightDir, 1, ToFloatArray.convert(lightDirection), 0);
 
-		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
 
 		floor.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
-		baseColor = new Vec3D(0.0, 1.0, 1.0);
 		objSwitch = 3;
-
-		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		gl.glUniform1i(locObj, objSwitch);
 		sphere.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
-		baseColor = new Vec3D(1.0, 1.0, 0.0);
 		objSwitch = 1;
 		gl.glUniform1i(locObj, objSwitch);
-		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		torus.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		objSwitch = 2;
 		gl.glUniform1i(locObj, objSwitch);
 		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
-		textureColor = renderTarget.getColorTexture();
+		gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_NONE);
+		textureColor = renderTarget.getDepthTexture();
 
-		//gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_COMPARE_REF_TO_TEXTURE);
+		gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_COMPARE_REF_TO_TEXTURE);
 		textureDepth = renderTarget.getDepthTexture();
 
-//----------------------------------------------------------------------------------------------------------//
+//----------------------------------2nd GPU run------------------------------------------//
 		gl.glBindFramebuffer(GL2GL3.GL_FRAMEBUFFER, 0);
 		gl.glViewport(0, 0, width, height);
 
@@ -152,7 +149,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		//textureDepth.bind();
 		gl.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		gl.glClear(GL2GL3.GL_COLOR_BUFFER_BIT | GL2GL3.GL_DEPTH_BUFFER_BIT);
-		renderTarget.getDepthTexture().bind(shaderProgram, "textureDepth", 0);
+		//renderTarget.getDepthTexture().bind(shaderProgram, "textureDepth", 0);
 
 		gl.glUniformMatrix4fv(locModelMat, 1, false,
 				ToFloatArray.convert(model), 0);
@@ -164,6 +161,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		gl.glUniform3fv(locEye, 1, ToFloatArray.convert(cam.getEye()), 0);
 		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		gl.glUniform3fv(locLightDir, 1, ToFloatArray.convert(lightDirection), 0);
+		gl.glUniform1i(locAAmode, aaSwitch);
 
 		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
 
@@ -186,8 +184,8 @@ public class Renderer implements GLEventListener, MouseListener,
 		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		gl.glUseProgram(0);
-		textureViewer.view(textureColor, -1, -0.5, 0.5, height / (double) width);
-		textureViewer.view(textureDepth, -1, -1, 0.5, height / (double) width);
+		//textureViewer.view(textureColor, -1, -0.5, 0.5, height / (double) width);
+		//textureViewer.view(textureDepth, -1, -1, 0.5, height / (double) width);
 
 		drawStrings();
 	}
@@ -277,12 +275,7 @@ public class Renderer implements GLEventListener, MouseListener,
 				cam = cam.mulRadius(1.1f);
 				break;
 			case KeyEvent.VK_E:
-				break;
-			case KeyEvent.VK_J:
-				model = model.mul(new Mat4Transl(-.5,0,0));
-				break;
-			case KeyEvent.VK_K:
-				model = model.mul(new Mat4Transl(.5,0,0));
+				aaSwitch = (aaSwitch + 1) % 3;
 				break;
 			case KeyEvent.VK_O:
 				model = model.mul(new Mat4RotX(0.08));
@@ -329,8 +322,12 @@ public class Renderer implements GLEventListener, MouseListener,
 
 	private void drawStrings() {
 		textRenderer.drawStr2D(3, height - 15, "PGRF3 - task 2 | Controls: [LMB] camera, " +
-				"[WASD] camera movement, [B] fill mode, [OP] rotateX, [JK] translateX");
-		textRenderer.drawStr2D(148, height - 30, "[RMB] rotateZ");
+				"[WASD] camera movement, [B] fill mode, [OP] rotateX, [E] anti-aliasing mode, [RMB] rotateZ");
 		textRenderer.drawStr2D(width - 90, 3, " (c) Pavel Borik");
+		if(aaSwitch == 0) textRenderer.drawStr2D(width - 800, 3, "AA mode: No anti-aliasing");
+		if(aaSwitch == 1) textRenderer.drawStr2D(width - 800, 3, "AA mode: Poisson Sampling");
+		if(aaSwitch == 2) textRenderer.drawStr2D(width - 800, 3, "AA mode: Stratified Poisson Sampling");
+
+
 	}
 }

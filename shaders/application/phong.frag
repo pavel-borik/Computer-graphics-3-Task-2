@@ -2,15 +2,15 @@
 in vec3 viewDirection, lightDirection, normal;
 in float dist;
 in vec4 position;
-uniform int object;
+uniform int object, aaMode;
 uniform vec3 eyePos, lightPos;
 uniform vec3 baseCol;
 const float PI = 3.1415926535897932384626433832795;
 out vec4 outColor;
 uniform mat4 modelMat, viewMat, projMat;
 
-uniform sampler2D textureDepth;
-//uniform sampler2DShadow textureDepth;
+//uniform sampler2D textureDepth;
+uniform sampler2DShadow textureDepth;
 
 in vec4 shadowCoord;
 
@@ -79,24 +79,28 @@ void main( void ) {
       vec2( 0.14383161, -0.14100790 )
    );
 
-    for (int i=0;i<4;i++){
-        if ( texture( textureDepth, (shadowCoord.xy + poissonDisk[i]/700.0)).z  <  shadowCoord.z-bias){
-            visibility-=0.2;
-        }
+    //switching of anti-aliasing modes
+    switch(aaMode) {
+        // No antialiasing
+        case 0:
+            visibility -= 0.8* (1.0-texture( textureDepth, vec3(shadowCoord.xy,  (shadowCoord.z-bias)/shadowCoord.w) ));
+            break;
+        case 1:
+            for (int i=0;i<4;i++){
+        //        if ( texture( textureDepth, (shadowCoord.xy + poissonDisk[i]/700.0)).z  <  shadowCoord.z-bias){
+        //            visibility-=0.2;
+        //        }
+                visibility -= 0.2* (1.0-texture( textureDepth, vec3(shadowCoord.xy + poissonDisk[i]/700.0,  (shadowCoord.z-bias)/shadowCoord.w) ));
+            }
+            break;
+        case 2:
+            for (int i=0;i<4;i++){
+                //int index = int(16.0*random(gl_FragCoord.xyy, i))%16;
+                int index = int(16.0*random(floor(position.xyz*1000.0), i))%16;
+                visibility -= 0.2* (1.0-texture( textureDepth, vec3(shadowCoord.xy + poissonDisk[index]/700.0,  (shadowCoord.z-bias)/shadowCoord.w) ));
+            }
+            break;
     }
-
-//    for (int i=0;i<4;i++){
-//        //int index = int(16.0*random(gl_FragCoord.xyy, i))%16;
-//        int index = int(16.0*random(floor(position.xyz*1000.0), i))%16;
-//
-//		visibility -= 0.2* (1.0-texture( textureDepth, vec3(shadowCoord.xy + poissonDisk[index]/700.0,  (shadowCoord.z-bias)/shadowCoord.w) ));
-//	}
-
-//    if (spotEffect > spotCutOff) {
-//        outColor = mix(totalAmbient,totalAmbient+att*(visibility*totalDiffuse + visibility*totalSpecular),blend);
-//    } else {
-//        outColor = totalAmbient;
-//    }
 
     outColor = totalAmbient+att*(visibility*totalDiffuse + visibility*totalSpecular);
 
