@@ -33,6 +33,9 @@ public class Renderer implements GLEventListener, MouseListener,
 
 	Camera cam = new Camera();
 	Mat4 model, proj;
+	Mat4 modelFloor, modelSphere, modelTorus;
+	Quat torusQuat = new Quat().fromEulerAngles(0.0,0.1, 0.0);
+
 
 	@Override
 	public void init(GLAutoDrawable glDrawable) {
@@ -44,7 +47,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		
 		textRenderer = new OGLTextRenderer(gl, glDrawable.getSurfaceWidth(), glDrawable.getSurfaceHeight());
 
-		shaderProgram = ShaderUtils.loadProgram(gl, "/application/phong");
+		shaderProgram = ShaderUtils.loadProgram(gl, "/application/shadowMapping");
 		shaderProgram2 = ShaderUtils.loadProgram(gl, "/application/phong");
 
 		floor = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
@@ -86,6 +89,9 @@ public class Renderer implements GLEventListener, MouseListener,
 		lightProjMat =  new Mat4OrthoRH(width/20, height/20 , 0.1, 100.0).mul(new Mat4Scale((double) width / height, 1, 1));
 
 		model = new Mat4Identity();
+		modelFloor  = new Mat4Identity();
+		modelTorus = new Mat4Identity();
+		modelSphere = new Mat4Identity();
 
 		gl.glEnable(GL2GL3.GL_DEPTH_TEST);
 		textureViewer = new OGLTexture2D.Viewer(gl);
@@ -96,7 +102,6 @@ public class Renderer implements GLEventListener, MouseListener,
 		GL2GL3 gl = glDrawable.getGL().getGL2GL3();
 
 		gl.glUseProgram(shaderProgram);
-		objSwitch = 0;
 		renderTarget.bind();
 		gl.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		gl.glClear(GL2GL3.GL_COLOR_BUFFER_BIT | GL2GL3.GL_DEPTH_BUFFER_BIT);
@@ -104,36 +109,40 @@ public class Renderer implements GLEventListener, MouseListener,
 
 		// view and projection matrices of the light are used in the first run to calculate the shadows' position
 		gl.glUniformMatrix4fv(locModelMat, 1, false,
-				ToFloatArray.convert(model), 0);
+				ToFloatArray.convert(modelFloor), 0);
 		gl.glUniformMatrix4fv(locViewMat, 1, false,
 				ToFloatArray.convert(lightViewMat), 0);
 		gl.glUniformMatrix4fv(locProjMat, 1, false,
 				ToFloatArray.convert( lightProjMat), 0);
-		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(model.mul(lightViewMat).mul(lightProjMat)),0);
 
 //		gl.glUniform1i(locAAmode, aaSwitch);
-//		gl.glUniform1i(locObj, objSwitch);
 //		gl.glUniform3fv(locEye, 1, ToFloatArray.convert(cam.getEye()), 0);
 //		//gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 //		gl.glUniform3fv(locLightDir, 1, ToFloatArray.convert(lightDirection), 0);
 
-
+		objSwitch = 0;
+		gl.glUniform1i(locObj, objSwitch);
 		floor.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
+
+		objSwitch = 2;
+		gl.glUniform1i(locObj, objSwitch);
+		//Mushroom is stationary, it's possible to use the model matrix of the floor
+		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		objSwitch = 3;
 		gl.glUniform1i(locObj, objSwitch);
+		gl.glUniformMatrix4fv(locModelMat, 1, false,
+				ToFloatArray.convert(modelSphere), 0);
 		sphere.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		objSwitch = 1;
 		gl.glUniform1i(locObj, objSwitch);
+		gl.glUniformMatrix4fv(locModelMat, 1, false,
+				ToFloatArray.convert(modelTorus), 0);
 		torus.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
-		objSwitch = 2;
-		gl.glUniform1i(locObj, objSwitch);
-		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
-
-		gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_NONE);
-		textureColor = renderTarget.getDepthTexture();
+		//gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_NONE);
+		//textureColor = renderTarget.getDepthTexture();
 
 		gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_COMPARE_REF_TO_TEXTURE);
 		textureDepth = renderTarget.getDepthTexture();
@@ -142,47 +151,60 @@ public class Renderer implements GLEventListener, MouseListener,
 		gl.glBindFramebuffer(GL2GL3.GL_FRAMEBUFFER, 0);
 		gl.glViewport(0, 0, width, height);
 
-		baseColor = new Vec3D(0.5, 0.5, 0.5);
-		objSwitch = 0;
 		gl.glUseProgram(shaderProgram);
 		//textureDepth.bind();
 		gl.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		gl.glClear(GL2GL3.GL_COLOR_BUFFER_BIT | GL2GL3.GL_DEPTH_BUFFER_BIT);
+		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
+
 		//renderTarget.getDepthTexture().bind(shaderProgram, "textureDepth", 0);
 
 		gl.glUniformMatrix4fv(locModelMat, 1, false,
-				ToFloatArray.convert(model), 0);
+				ToFloatArray.convert(modelFloor), 0);
 		gl.glUniformMatrix4fv(locViewMat, 1, false,
 				ToFloatArray.convert(cam.getViewMatrix()), 0);
 		gl.glUniformMatrix4fv(locProjMat, 1, false,
 				ToFloatArray.convert(proj), 0);
-		gl.glUniform1i(locObj, objSwitch);
+		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelFloor.mul(lightViewMat).mul(lightProjMat)),0);
+
 		gl.glUniform3fv(locEye, 1, ToFloatArray.convert(cam.getEye()), 0);
-		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		gl.glUniform3fv(locLightDir, 1, ToFloatArray.convert(lightDirection), 0);
 		gl.glUniform1i(locAAmode, aaSwitch);
 
-		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
-
+		baseColor = new Vec3D(0.5, 0.5, 0.5);
+		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
+		objSwitch = 0;
+		gl.glUniform1i(locObj, objSwitch);
 		floor.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
+
+		baseColor = new Vec3D(0.7, 0.0, 0.0);
+		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
+		objSwitch = 2;
+		gl.glUniform1i(locObj, objSwitch);
+		//Mushroom is stationary, it's possible to use the model matrix of the floor
+		//gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelFloor.mul(lightViewMat).mul(lightProjMat)),0);
+		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		baseColor = new Vec3D(0.0, 1.0, 1.0);
 		objSwitch = 3;
+		gl.glUniformMatrix4fv(locModelMat, 1, false,
+				ToFloatArray.convert(modelSphere), 0);
+		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelSphere.mul(lightViewMat).mul(lightProjMat)),0);
 		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		gl.glUniform1i(locObj, objSwitch);
 		sphere.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		baseColor = new Vec3D(1.0, 1.0, 0.0);
 		objSwitch = 1;
+		gl.glUniformMatrix4fv(locModelMat, 1, false,
+				ToFloatArray.convert(modelTorus), 0);
 		gl.glUniform1i(locObj, objSwitch);
+		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelTorus.mul(lightViewMat).mul(lightProjMat)),0);
 		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		torus.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
-		objSwitch = 2;
-		gl.glUniform1i(locObj, objSwitch);
-		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
-		gl.glUseProgram(0);
+		//gl.glUseProgram(0);
 		//textureViewer.view(textureColor, -1, -0.5, 0.5, height / (double) width);
 		//textureViewer.view(textureDepth, -1, -1, 0.5, height / (double) width);
 
@@ -232,7 +254,8 @@ public class Renderer implements GLEventListener, MouseListener,
 
 		}
 		if(SwingUtilities.isRightMouseButton(e)) {
-			model = model.mul(new Mat4RotZ((ox - e.getX())*0.02));
+			modelFloor = modelFloor.mul(new Mat4RotZ((ox - e.getX())*0.02));
+			//model = model.mul(new Mat4RotZ((ox - e.getX())*0.02));
 		}
 
 		ox = e.getX();
@@ -283,14 +306,17 @@ public class Renderer implements GLEventListener, MouseListener,
 				model = model.mul(new Mat4RotX(-0.08));
 				break;
 			case KeyEvent.VK_V:
-				System.out.println(lightViewMat);
+				torusQuat.mul(0.1);
+				modelTorus =  modelTorus.mul(torusQuat.toRotationMatrix());
 				break;
 			case KeyEvent.VK_B:
 				polygonMode = polygonMode == GL2GL3.GL_FILL ? GL2GL3.GL_LINE : GL2GL3.GL_FILL;
 				break;
-			case KeyEvent.VK_T:
+			case KeyEvent.VK_U:
+				modelTorus = modelTorus.mul(new Mat4RotZ(0.05));
 				break;
-			case KeyEvent.VK_L:
+			case KeyEvent.VK_I:
+				modelSphere = modelSphere.mul(new Mat4RotZ(0.05));
 				break;
 			case KeyEvent.VK_N:
 				/*lightPos = lightPos.mul(new Mat3RotZ(0.1));
