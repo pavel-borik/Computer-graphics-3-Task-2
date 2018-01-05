@@ -17,25 +17,18 @@ public class Renderer implements GLEventListener, MouseListener,
 
 	int width, height, ox, oy;
 	int shaderProgram, shaderProgram2;
-	int locObj,locModelMat,locViewMat,locProjMat,locEye,locBaseCol, locLightDir, locLightMatrix, locAAmode;
-	int locProjMat2, locModelMat2, locViewMat2, locEye2, locObj2, locBaseCol2, locLightPos2;
+	int locObj,locModelMat,locViewMat,locProjMat,locBaseCol, locLightDir, locLightMatrix, locAAmode;
 	int objSwitch = 0, aaSwitch = 0;
 	int polygonMode = GL2GL3.GL_FILL;
-	OGLTexture2D textureDepth,textureColor;
-	OGLTexture2D.Viewer textureViewer;
+	OGLTexture2D textureDepth;
 	OGLRenderTarget renderTarget;
-
-	Mat4 lightViewMat, lightProjMat;
-	boolean saved = false;
 
 	Vec3D baseColor= new Vec3D(1,0,0);
 	Vec3D lightDirection = new Vec3D(10.0, 0.0, 8.0);
-
 	Camera cam = new Camera();
-	Mat4 model, proj;
-	Mat4 modelFloor, modelSphere, modelTorus;
-	Quat torusQuat = new Quat().fromEulerAngles(0.0,0.1, 0.0);
 
+	Mat4 lightViewMat, lightProjMat, proj;
+	Mat4 modelFloor, modelSphere, modelTorus;
 
 	@Override
 	public void init(GLAutoDrawable glDrawable) {
@@ -59,21 +52,11 @@ public class Renderer implements GLEventListener, MouseListener,
 		locModelMat = gl.glGetUniformLocation(shaderProgram, "modelMat");
 		locViewMat = gl.glGetUniformLocation(shaderProgram, "viewMat");
 		locProjMat = gl.glGetUniformLocation(shaderProgram, "projMat");
-		locEye = gl.glGetUniformLocation(shaderProgram, "eyePos");
 		locBaseCol = gl.glGetUniformLocation(shaderProgram, "baseCol");
 		locLightDir = gl.glGetUniformLocation(shaderProgram, "lightDir");
 		locLightMatrix = gl.glGetUniformLocation(shaderProgram, "lightMVP");
 		locAAmode = gl.glGetUniformLocation(shaderProgram, "aaMode");
 
-/*
-		locObj2 = gl.glGetUniformLocation(shaderProgram2, "object");
-		locModelMat2 = gl.glGetUniformLocation(shaderProgram2, "modelMat");
-		locViewMat2 = gl.glGetUniformLocation(shaderProgram2, "viewMat");
-		locProjMat2 = gl.glGetUniformLocation(shaderProgram2, "projMat");
-		locEye2 = gl.glGetUniformLocation(shaderProgram2, "eyePos");
-		locBaseCol2 = gl.glGetUniformLocation(shaderProgram2, "baseCol");
-		locLightPos2 = gl.glGetUniformLocation(shaderProgram2, "lightPos");
-*/
 		renderTarget = new OGLRenderTarget(gl, 1024, 1024);
 
 		cam = cam.withPosition(new Vec3D(25, 25, 5))
@@ -88,13 +71,11 @@ public class Renderer implements GLEventListener, MouseListener,
 
 		lightProjMat =  new Mat4OrthoRH(width/20, height/20 , 0.1, 100.0).mul(new Mat4Scale((double) width / height, 1, 1));
 
-		model = new Mat4Identity();
 		modelFloor  = new Mat4Identity();
 		modelTorus = new Mat4Identity();
 		modelSphere = new Mat4Identity();
 
 		gl.glEnable(GL2GL3.GL_DEPTH_TEST);
-		textureViewer = new OGLTexture2D.Viewer(gl);
 	}
 
 	@Override
@@ -115,11 +96,6 @@ public class Renderer implements GLEventListener, MouseListener,
 		gl.glUniformMatrix4fv(locProjMat, 1, false,
 				ToFloatArray.convert( lightProjMat), 0);
 
-//		gl.glUniform1i(locAAmode, aaSwitch);
-//		gl.glUniform3fv(locEye, 1, ToFloatArray.convert(cam.getEye()), 0);
-//		//gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
-//		gl.glUniform3fv(locLightDir, 1, ToFloatArray.convert(lightDirection), 0);
-
 		objSwitch = 0;
 		gl.glUniform1i(locObj, objSwitch);
 		floor.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
@@ -141,9 +117,6 @@ public class Renderer implements GLEventListener, MouseListener,
 				ToFloatArray.convert(modelTorus), 0);
 		torus.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
-		//gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_NONE);
-		//textureColor = renderTarget.getDepthTexture();
-
 		gl.glTexParameteri(GL2GL3.GL_TEXTURE_2D, GL2GL3.GL_TEXTURE_COMPARE_MODE, GL2GL3.GL_COMPARE_REF_TO_TEXTURE);
 		textureDepth = renderTarget.getDepthTexture();
 
@@ -152,12 +125,9 @@ public class Renderer implements GLEventListener, MouseListener,
 		gl.glViewport(0, 0, width, height);
 
 		gl.glUseProgram(shaderProgram);
-		//textureDepth.bind();
 		gl.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		gl.glClear(GL2GL3.GL_COLOR_BUFFER_BIT | GL2GL3.GL_DEPTH_BUFFER_BIT);
 		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
-
-		//renderTarget.getDepthTexture().bind(shaderProgram, "textureDepth", 0);
 
 		gl.glUniformMatrix4fv(locModelMat, 1, false,
 				ToFloatArray.convert(modelFloor), 0);
@@ -167,7 +137,6 @@ public class Renderer implements GLEventListener, MouseListener,
 				ToFloatArray.convert(proj), 0);
 		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelFloor.mul(lightViewMat).mul(lightProjMat)),0);
 
-		gl.glUniform3fv(locEye, 1, ToFloatArray.convert(cam.getEye()), 0);
 		gl.glUniform3fv(locLightDir, 1, ToFloatArray.convert(lightDirection), 0);
 		gl.glUniform1i(locAAmode, aaSwitch);
 
@@ -186,12 +155,12 @@ public class Renderer implements GLEventListener, MouseListener,
 		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		baseColor = new Vec3D(0.0, 1.0, 1.0);
+		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		objSwitch = 3;
+		gl.glUniform1i(locObj, objSwitch);
 		gl.glUniformMatrix4fv(locModelMat, 1, false,
 				ToFloatArray.convert(modelSphere), 0);
 		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelSphere.mul(lightViewMat).mul(lightProjMat)),0);
-		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
-		gl.glUniform1i(locObj, objSwitch);
 		sphere.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		baseColor = new Vec3D(1.0, 1.0, 0.0);
@@ -202,11 +171,6 @@ public class Renderer implements GLEventListener, MouseListener,
 		gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelTorus.mul(lightViewMat).mul(lightProjMat)),0);
 		gl.glUniform3fv(locBaseCol, 1, ToFloatArray.convert(baseColor), 0);
 		torus.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
-
-
-		//gl.glUseProgram(0);
-		//textureViewer.view(textureColor, -1, -0.5, 0.5, height / (double) width);
-		//textureViewer.view(textureDepth, -1, -1, 0.5, height / (double) width);
 
 		drawStrings();
 	}
@@ -254,8 +218,8 @@ public class Renderer implements GLEventListener, MouseListener,
 
 		}
 		if(SwingUtilities.isRightMouseButton(e)) {
-			modelFloor = modelFloor.mul(new Mat4RotZ((ox - e.getX())*0.02));
-			//model = model.mul(new Mat4RotZ((ox - e.getX())*0.02));
+			modelTorus = modelTorus.mul(new Mat4RotZ((ox - e.getX())*0.02));
+			modelSphere = modelSphere.mul(new Mat4RotZ((ox - e.getX())*0.02));
 		}
 
 		ox = e.getX();
@@ -281,33 +245,14 @@ public class Renderer implements GLEventListener, MouseListener,
 			case KeyEvent.VK_A:
 				cam = cam.left(0.5);
 				break;
-			case KeyEvent.VK_CONTROL:
-				cam = cam.down(0.5);
-				break;
-			case KeyEvent.VK_SHIFT:
-				cam = cam.up(0.5);
-				break;
-			case KeyEvent.VK_SPACE:
-				cam = cam.withFirstPerson(!cam.getFirstPerson());
-				break;
-			case KeyEvent.VK_R:
-				cam = cam.mulRadius(0.9f);
-				break;
-			case KeyEvent.VK_F:
-				cam = cam.mulRadius(1.1f);
-				break;
 			case KeyEvent.VK_E:
 				aaSwitch = (aaSwitch + 1) % 3;
 				break;
 			case KeyEvent.VK_O:
-				model = model.mul(new Mat4RotX(0.08));
+				modelTorus = modelTorus.mul(new Mat4RotY(0.05));
 				break;
 			case KeyEvent.VK_P:
-				model = model.mul(new Mat4RotX(-0.08));
-				break;
-			case KeyEvent.VK_V:
-				torusQuat.mul(0.1);
-				modelTorus =  modelTorus.mul(torusQuat.toRotationMatrix());
+				modelTorus = modelTorus.mul(new Mat4RotY(-0.05));
 				break;
 			case KeyEvent.VK_B:
 				polygonMode = polygonMode == GL2GL3.GL_FILL ? GL2GL3.GL_LINE : GL2GL3.GL_FILL;
@@ -317,16 +262,6 @@ public class Renderer implements GLEventListener, MouseListener,
 				break;
 			case KeyEvent.VK_I:
 				modelSphere = modelSphere.mul(new Mat4RotZ(0.05));
-				break;
-			case KeyEvent.VK_N:
-				/*lightPos = lightPos.mul(new Mat3RotZ(0.1));
-				lightViewMat = new Camera().withPosition(lightPos.opposite())
-						.withAzimuth(Math.PI * 0.90)
-						.withZenith(Math.PI * -0.20).getViewMatrix();
-				//System.out.println(lightPos.toString());*/
-				break;
-			case KeyEvent.VK_M:
-				saved = false;
 				break;
 		}
 	}
@@ -347,7 +282,8 @@ public class Renderer implements GLEventListener, MouseListener,
 
 	private void drawStrings() {
 		textRenderer.drawStr2D(3, height - 15, "PGRF3 - task 2 | Controls: [LMB] camera, " +
-				"[WASD] camera movement, [B] fill mode, [OP] rotateX, [E] anti-aliasing mode, [RMB] rotateZ");
+				"[WASD] camera movement, [E] anti-aliasing mode, [B] fill mode, [U] move Torus, [I] move Sphere");
+		textRenderer.drawStr2D(150, height - 30, "[RMB] move Torus+Sphere");
 		textRenderer.drawStr2D(width - 90, 3, " (c) Pavel Borik");
 		if(aaSwitch == 0) textRenderer.drawStr2D(width - 800, 3, "AA mode: No anti-aliasing");
 		if(aaSwitch == 1) textRenderer.drawStr2D(width - 800, 3, "AA mode: Poisson Sampling");

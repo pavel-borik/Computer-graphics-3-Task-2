@@ -7,7 +7,6 @@ uniform vec3 baseCol;
 const float PI = 3.1415926535897932384626433832795;
 out vec4 outColor;
 uniform mat4 modelMat, viewMat, projMat;
-//uniform sampler2D textureDepth;
 uniform sampler2DShadow textureDepth;
 
 // Random float number generator
@@ -42,9 +41,11 @@ void main( void ) {
         att = 1.0 / (1.0 + 0.01*dist + 0.001*dist*dist);
         totalSpecular = matSpecular * (pow(NDotH, specularPower));
     }
-
+    //Pixel's visibility, gets lower if it's in the shadow
     float visibility = 1.0;
+    //Bias value to prevent "shadow acne" artifacts
     float bias = 0.005;
+    //Poisson disk used for anti-aliasing purposes
     vec2 poissonDisk[16] = vec2[](
       vec2( -0.94201624, -0.39906216 ),
       vec2( 0.94558609, -0.76890725 ),
@@ -64,7 +65,7 @@ void main( void ) {
       vec2( 0.14383161, -0.14100790 )
    );
 
-    //switching of anti-aliasing modes
+    //Switching of anti-aliasing modes
     switch(aaMode) {
         // No anti-aliasing
         case 0:
@@ -73,16 +74,12 @@ void main( void ) {
         // Poisson sampling
         case 1:
             for (int i=0;i<4;i++){
-        //        if ( texture( textureDepth, (shadowCoord.xy + poissonDisk[i]/700.0)).z  <  shadowCoord.z-bias){
-        //            visibility-=0.2;
-        //        }
                 visibility -= 0.2* (1.0-texture( textureDepth, vec3(shadowCoord.xy + poissonDisk[i]/700.0,  (shadowCoord.z-bias)/shadowCoord.w) ));
             }
             break;
         // Stratified Poisson sampling
         case 2:
             for (int i=0;i<4;i++){
-                //int index = int(16.0*random(gl_FragCoord.xyy, i))%16;
                 int index = int(16.0*random(floor(position.xyz*1000.0), i))%16;
                 visibility -= 0.2* (1.0-texture( textureDepth, vec3(shadowCoord.xy + poissonDisk[index]/700.0,  (shadowCoord.z-bias)/shadowCoord.w) ));
             }
