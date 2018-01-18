@@ -85,8 +85,10 @@ void main( void ) {
             }
             break;
     }
+    //Specular part is zero if a pixel is in the shadow
+    if(visibility < 1.0) totalSpecular = vec4(0,0,0,0);
 
-    outColor = totalAmbient+att*(visibility*totalDiffuse + visibility*totalSpecular);
+    outColor = totalAmbient+att*(visibility*totalDiffuse + totalSpecular);
 
 }
 

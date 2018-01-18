@@ -13,6 +13,7 @@ vec3 normalDiff (vec2 uv);
 
 void main() {
     // Calculated in World space
+    // Using the directional light only
     position = vec4(createObject(inPosition), 1.0);
     normal = normalDiff(inPosition);
     normal = transpose(inverse(mat3(modelMat))) * normal;

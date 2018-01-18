@@ -16,7 +16,7 @@ public class Renderer implements GLEventListener, MouseListener,
 	OGLTextRenderer textRenderer;
 
 	int width, height, ox, oy;
-	int shaderProgram, shaderProgram2;
+	int shaderProgram;
 	int locObj,locModelMat,locViewMat,locProjMat,locBaseCol, locLightDir, locLightMatrix, locAAmode;
 	int objSwitch = 0, aaSwitch = 0;
 	int polygonMode = GL2GL3.GL_FILL;
@@ -41,7 +41,6 @@ public class Renderer implements GLEventListener, MouseListener,
 		textRenderer = new OGLTextRenderer(gl, glDrawable.getSurfaceWidth(), glDrawable.getSurfaceHeight());
 
 		shaderProgram = ShaderUtils.loadProgram(gl, "/application/shadowMapping");
-		shaderProgram2 = ShaderUtils.loadProgram(gl, "/application/phong");
 
 		floor = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
 		torus = MeshGenerator.generateGrid(gl, 40, 40,"inPosition");
@@ -68,7 +67,7 @@ public class Renderer implements GLEventListener, MouseListener,
 				.withAzimuth(Math.PI * 1.00)
 				.withZenith(Math.PI * -0.25).getViewMatrix();
 
-
+		//Projection matrix of the light is orthogonal
 		lightProjMat =  new Mat4OrthoRH(width/20, height/20 , 0.1, 100.0).mul(new Mat4Scale((double) width / height, 1, 1));
 
 		modelFloor  = new Mat4Identity();
@@ -88,7 +87,7 @@ public class Renderer implements GLEventListener, MouseListener,
 		gl.glClear(GL2GL3.GL_COLOR_BUFFER_BIT | GL2GL3.GL_DEPTH_BUFFER_BIT);
 		gl.glPolygonMode(GL2GL3.GL_FRONT_AND_BACK, polygonMode);
 
-		// view and projection matrices of the light are used in the first run to calculate the shadows' position
+		// View and projection matrices of the light are used in the first run to calculate the shadows' position
 		gl.glUniformMatrix4fv(locModelMat, 1, false,
 				ToFloatArray.convert(modelFloor), 0);
 		gl.glUniformMatrix4fv(locViewMat, 1, false,
@@ -151,7 +150,6 @@ public class Renderer implements GLEventListener, MouseListener,
 		objSwitch = 2;
 		gl.glUniform1i(locObj, objSwitch);
 		//Mushroom is stationary, it's possible to use the model matrix of the floor
-		//gl.glUniformMatrix4fv(locLightMatrix, 1, false, ToFloatArray.convert(modelFloor.mul(lightViewMat).mul(lightProjMat)),0);
 		mushroom.draw(GL2GL3.GL_TRIANGLES, shaderProgram);
 
 		baseColor = new Vec3D(0.0, 1.0, 1.0);
